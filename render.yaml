@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: glacis-ikel
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
