@@ -6,6 +6,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import urlopen
 
 from .contract import ContractError, validate
 from .decision import assess
@@ -13,6 +14,17 @@ from .store import overview, save
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "web"
+
+
+def weather_context() -> dict:
+    url = "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FParis"
+    try:
+        with urlopen(url, timeout=5) as response:
+            payload = json.load(response)
+        current = payload.get("current", {})
+        return {"live": True, "source": "Open-Meteo · Paris", "temperature_c": current.get("temperature_2m"), "humidity": current.get("relative_humidity_2m"), "observed_at": current.get("time")}
+    except Exception:
+        return {"live": False, "source": "Open-Meteo · Paris", "message": "Contexte météo indisponible."}
 
 
 def ingest(reading: dict) -> dict:
@@ -39,6 +51,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.OK, {"status": "ok", "service": "glacis"})
         if path == "/api/overview":
             return self.send_json(HTTPStatus.OK, overview())
+        if path == "/api/weather-context":
+            return self.send_json(HTTPStatus.OK, weather_context())
         if path == "/":
             self.path = "/index.html"
         return super().do_GET()
