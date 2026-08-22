@@ -9,4 +9,13 @@ function render(data){
 }
 async function refresh(){const response=await fetch('/api/overview');render(await response.json());}
 document.querySelector('#demo').addEventListener('click',async e=>{e.currentTarget.disabled=true;e.currentTarget.textContent='Relevés en cours…';await fetch('/api/demo',{method:'POST'});await refresh();e.currentTarget.textContent='Jeu de démonstration chargé';});refresh();
-fetch('/api/weather-context').then(response=>response.json()).then(data=>{document.querySelector('#weather-context').textContent=data.live?`Contexte météo réel · Paris ${data.temperature_c} °C · humidité ${data.humidity}% · ${data.observed_at}`:data.message;}).catch(()=>{document.querySelector('#weather-context').textContent='Contexte météo indisponible.';});
+const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FParis';
+fetch(weatherUrl)
+  .then(response => { if (!response.ok) throw new Error('Open-Meteo indisponible.'); return response.json(); })
+  .then(data => {
+    const current = data.current;
+    document.querySelector('#weather-context').textContent = `Contexte météo public · Paris ${current.temperature_2m} °C · humidité ${current.relative_humidity_2m}% · ${current.time}`;
+  })
+  .catch(() => fetch('/api/weather-context').then(response => response.json()).then(data => {
+    document.querySelector('#weather-context').textContent = data.live ? `Contexte météo public · Paris ${data.temperature_c} °C · humidité ${data.humidity}% · ${data.observed_at}` : 'Contexte météo indisponible.';
+  }).catch(() => { document.querySelector('#weather-context').textContent = 'Contexte météo indisponible.'; }));
