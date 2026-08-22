@@ -6,7 +6,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from .contract import ContractError, validate
 from .decision import assess
@@ -19,7 +19,8 @@ WEB = ROOT / "web"
 def weather_context() -> dict:
     url = "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FParis"
     try:
-        with urlopen(url, timeout=5) as response:
+        request = Request(url, headers={"User-Agent": "Ikel-Glacis/1.0 (+https://github.com/Ikel0/glacis)"})
+        with urlopen(request, timeout=5) as response:
             payload = json.load(response)
         current = payload.get("current", {})
         return {"live": True, "source": "Open-Meteo · Paris", "temperature_c": current.get("temperature_2m"), "humidity": current.get("relative_humidity_2m"), "observed_at": current.get("time")}
