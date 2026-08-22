@@ -13,6 +13,8 @@ PYTHONPATH=src python3 -m glacis.server
 
 Le tableau s'ouvre sur `http://localhost:8090` et le bouton de démonstration injecte cinq lectures synthétiques.
 
+Le pied de page affiche aussi, quand la source est joignable, le contexte météo Open-Meteo de Paris. Cette donnée publique est uniquement un repère de démonstration : elle ne modifie ni la décision de température, ni les alertes de la chaîne du froid.
+
 ## Version Kafka
 
 ```bash
