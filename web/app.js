@@ -8,7 +8,25 @@ function render(data){
   document.querySelector('#rows').innerHTML=data.readings.length?data.readings.map(row=>`<article class="row"><time>${time(row.observed_at)}</time><span class="shipment">${esc(row.shipment_id)}</span><span class="sensor">${esc(row.location)} · ${esc(row.sensor_id)}</span><b>${row.temperature_c.toFixed(1)} °C</b><span class="chip ${row.state}">${status[row.state]}</span></article>`).join(''):'<p class="empty">Le journal est vide. La démo injecte des lectures synthétiques dans l’API.</p>';
 }
 async function refresh(){const response=await fetch('/api/overview');render(await response.json());}
-document.querySelector('#demo').addEventListener('click',async e=>{e.currentTarget.disabled=true;e.currentTarget.textContent='Relevés en cours…';await fetch('/api/demo',{method:'POST'});await refresh();e.currentTarget.textContent='Jeu de démonstration chargé';});refresh();
+const demoStatus=document.querySelector('#demo-status');
+document.querySelector('#demo').addEventListener('click',async e=>{
+  e.currentTarget.disabled=true;
+  e.currentTarget.textContent='Relevés en cours…';
+  try{
+    const response=await fetch('/api/demo',{method:'POST'});
+    if(!response.ok)throw new Error('L’API n’a pas accepté la démo.');
+    const result=await response.json();
+    await refresh();
+    demoStatus.textContent=result.inserted
+      ? `${result.inserted} relevé${result.inserted>1?'s':''} ajouté${result.inserted>1?'s':''}. ${result.replayed} réémission${result.replayed>1?'s':''} reconnue${result.replayed>1?'s':''}.`
+      : `${result.replayed} réémission${result.replayed>1?'s':''} reconnue${result.replayed>1?'s':''}. Le journal n’a pas été dupliqué.`;
+  }catch(error){
+    demoStatus.textContent=error.message;
+  }finally{
+    e.currentTarget.disabled=false;
+    e.currentTarget.textContent='Lancer les relevés de démo →';
+  }
+});refresh();
 const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FParis';
 fetch(weatherUrl)
   .then(response => { if (!response.ok) throw new Error('Open-Meteo indisponible.'); return response.json(); })

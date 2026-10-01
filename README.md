@@ -11,7 +11,7 @@ PYTHONPATH=src python3 -m unittest discover -s tests
 PYTHONPATH=src python3 -m glacis.server
 ```
 
-Le tableau s'ouvre sur `http://localhost:8090` et le bouton de démonstration injecte cinq lectures synthétiques.
+Le tableau s'ouvre sur `http://localhost:8090` et le bouton de démonstration injecte cinq lectures synthétiques. Un second clic rejoue les mêmes messages sans dupliquer le journal. Une réutilisation du même `reading_id` avec un autre contenu est refusée explicitement.
 
 Le pied de page affiche aussi, quand la source est joignable, le contexte météo Open-Meteo de Paris. Cette donnée est lue directement par le navigateur, avec une solution de repli côté API. Elle reste un simple repère de démonstration : elle ne modifie ni la décision de température, ni les alertes de la chaîne du froid.
 

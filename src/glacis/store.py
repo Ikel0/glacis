@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import sqlite3
 from pathlib import Path
 from typing import Any
+
+
+class ReadingConflictError(ValueError):
+    """Raised when a reading identifier is reused with another payload."""
 
 
 def path() -> Path:
@@ -18,18 +24,41 @@ def connect(database: Path | None = None) -> sqlite3.Connection:
     conn.execute("""CREATE TABLE IF NOT EXISTS readings (
       reading_id TEXT PRIMARY KEY, shipment_id TEXT, sensor_id TEXT, observed_at TEXT,
       temperature_c REAL, target_min_c REAL, target_max_c REAL, location TEXT,
-      state TEXT, delta_c REAL, message TEXT)""")
+      state TEXT, delta_c REAL, message TEXT, fingerprint TEXT)""")
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(readings)")}
+    if "fingerprint" not in columns:
+        conn.execute("ALTER TABLE readings ADD COLUMN fingerprint TEXT")
     return conn
+
+
+def fingerprint(reading: dict[str, Any]) -> str:
+    payload = json.dumps(reading, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def save(reading: dict[str, Any], result: dict[str, Any], database: Path | None = None) -> bool:
     with connect(database) as conn:
-        cursor = conn.execute("INSERT OR IGNORE INTO readings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+        conn.execute("BEGIN IMMEDIATE")
+        digest = fingerprint(reading)
+        existing = conn.execute("SELECT * FROM readings WHERE reading_id = ?", (reading["reading_id"],)).fetchone()
+        if existing:
+            stored = {key: existing[key] for key in (
+                "reading_id", "shipment_id", "sensor_id", "observed_at", "temperature_c",
+                "target_min_c", "target_max_c", "location",
+            )}
+            stored_digest = existing["fingerprint"] or fingerprint(stored)
+            if stored_digest != digest:
+                raise ReadingConflictError("reading_id already exists with a different payload")
+            return False
+        conn.execute("""INSERT INTO readings (
+          reading_id, shipment_id, sensor_id, observed_at, temperature_c, target_min_c,
+          target_max_c, location, state, delta_c, message, fingerprint
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
             reading["reading_id"], reading["shipment_id"], reading["sensor_id"], reading["observed_at"],
             reading["temperature_c"], reading["target_min_c"], reading["target_max_c"], reading["location"],
-            result["state"], result["delta_c"], result["message"],
+            result["state"], result["delta_c"], result["message"], digest,
         ))
-        return cursor.rowcount == 1
+        return True
 
 
 def overview(database: Path | None = None) -> dict[str, Any]:

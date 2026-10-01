@@ -1,9 +1,12 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from glacis.contract import ContractError, validate
 from glacis.decision import assess
 from glacis.server import weather_context
+from glacis.store import ReadingConflictError, save
 
 
 def reading(**extra):
@@ -24,6 +27,22 @@ class GlacisTests(unittest.TestCase):
     def test_invalid_range_is_rejected(self):
         with self.assertRaises(ContractError):
             validate(reading(target_min_c=8, target_max_c=8))
+
+    def test_non_finite_or_unexpected_values_are_rejected(self):
+        with self.assertRaisesRegex(ContractError, "finite"):
+            validate(reading(temperature_c=float("nan")))
+        with self.assertRaisesRegex(ContractError, "unexpected"):
+            validate(reading(debug=True))
+
+    def test_same_reading_id_cannot_hide_a_different_payload(self):
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "glacis.db"
+            first = reading()
+            self.assertTrue(save(first, assess(first), database))
+            self.assertFalse(save(first, assess(first), database))
+            with self.assertRaises(ReadingConflictError):
+                changed = reading(temperature_c=9)
+                save(changed, assess(changed), database)
 
     def test_weather_context_returns_public_observation(self):
         class Response:

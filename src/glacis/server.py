@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 
 from .contract import ContractError, validate
 from .decision import assess
-from .store import overview, save
+from .store import ReadingConflictError, overview, save
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "web"
@@ -24,14 +24,20 @@ def weather_context() -> dict:
             payload = json.load(response)
         current = payload.get("current", {})
         return {"live": True, "source": "Open-Meteo · Paris", "temperature_c": current.get("temperature_2m"), "humidity": current.get("relative_humidity_2m"), "observed_at": current.get("time")}
-    except Exception:
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
         return {"live": False, "source": "Open-Meteo · Paris", "message": "Contexte météo indisponible."}
 
 
 def ingest(reading: dict) -> dict:
     valid = validate(reading)
     result = assess(valid)
-    return {"reading_id": valid["reading_id"], "inserted": save(valid, result), "decision": result}
+    inserted = save(valid, result)
+    return {
+        "reading_id": valid["reading_id"],
+        "inserted": inserted,
+        "outcome": "accepted" if inserted else "replayed",
+        "decision": result,
+    }
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -63,16 +69,24 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/demo":
             events = [json.loads(line) for line in (ROOT / "data" / "demo_readings.jsonl").read_text().splitlines()]
             values = [ingest(event) for event in events]
-            return self.send_json(HTTPStatus.CREATED, {"inserted": sum(value["inserted"] for value in values)})
+            inserted = sum(value["inserted"] for value in values)
+            return self.send_json(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {
+                "inserted": inserted,
+                "replayed": len(values) - inserted,
+            })
         if path != "/api/readings":
             return self.send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            return self.send_json(HTTPStatus.CREATED, ingest(json.loads(self.rfile.read(length))))
+            response = ingest(json.loads(self.rfile.read(length)))
+            status = HTTPStatus.CREATED if response["inserted"] else HTTPStatus.OK
+            return self.send_json(status, response)
         except json.JSONDecodeError:
             return self.send_json(HTTPStatus.BAD_REQUEST, {"error": "body must be JSON"})
         except ContractError as exc:
             return self.send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
+        except ReadingConflictError as exc:
+            return self.send_json(HTTPStatus.CONFLICT, {"error": str(exc)})
 
     def log_message(self, fmt, *args):
         return
