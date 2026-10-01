@@ -10,21 +10,23 @@ function render(data){
 async function refresh(){const response=await fetch('/api/overview');render(await response.json());}
 const demoStatus=document.querySelector('#demo-status');
 document.querySelector('#demo').addEventListener('click',async e=>{
-  e.currentTarget.disabled=true;
-  e.currentTarget.textContent='Relevés en cours…';
+  const button=e.currentTarget;
+  button.disabled=true;
+  button.textContent='Relevés en cours…';
   try{
     const response=await fetch('/api/demo',{method:'POST'});
     if(!response.ok)throw new Error('L’API n’a pas accepté la démo.');
     const result=await response.json();
-    await refresh();
     demoStatus.textContent=result.inserted
       ? `${result.inserted} relevé${result.inserted>1?'s':''} ajouté${result.inserted>1?'s':''}. ${result.replayed} réémission${result.replayed>1?'s':''} reconnue${result.replayed>1?'s':''}.`
       : `${result.replayed} réémission${result.replayed>1?'s':''} reconnue${result.replayed>1?'s':''}. Le journal n’a pas été dupliqué.`;
+    button.disabled=false;
+    button.textContent='Lancer les relevés de démo →';
+    await refresh();
   }catch(error){
     demoStatus.textContent=error.message;
-  }finally{
-    e.currentTarget.disabled=false;
-    e.currentTarget.textContent='Lancer les relevés de démo →';
+    button.disabled=false;
+    button.textContent='Lancer les relevés de démo →';
   }
 });refresh();
 const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FParis';
@@ -32,8 +34,8 @@ fetch(weatherUrl)
   .then(response => { if (!response.ok) throw new Error('Open-Meteo indisponible.'); return response.json(); })
   .then(data => {
     const current = data.current;
-    document.querySelector('#weather-context').textContent = `Contexte météo public · Paris ${current.temperature_2m} °C · humidité ${current.relative_humidity_2m}% · ${current.time}`;
+    document.querySelector('#weather-context').textContent = `Contexte uniquement · Paris ${current.temperature_2m} °C · humidité ${current.relative_humidity_2m}% · ${current.time}`;
   })
   .catch(() => fetch('/api/weather-context').then(response => response.json()).then(data => {
-    document.querySelector('#weather-context').textContent = data.live ? `Contexte météo public · Paris ${data.temperature_c} °C · humidité ${data.humidity}% · ${data.observed_at}` : 'Contexte météo indisponible.';
-  }).catch(() => { document.querySelector('#weather-context').textContent = 'Contexte météo indisponible.'; }));
+    document.querySelector('#weather-context').textContent = data.live ? `Contexte uniquement · Paris ${data.temperature_c} °C · humidité ${data.humidity}% · ${data.observed_at}` : 'Contexte météo indisponible · la démo locale fonctionne.';
+  }).catch(() => { document.querySelector('#weather-context').textContent = 'Contexte météo indisponible · la démo locale fonctionne.'; }));

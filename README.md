@@ -4,7 +4,7 @@ Mini-projet Kafka autour d'un besoin simple : surveiller les relevés de tempér
 
 Il est volontairement court. L'objectif n'est pas de simuler une supply chain entière mais de travailler les gestes qu'une équipe data utilise tous les jours : contrat, topic, consumer group, idempotence, sujet de rejet et alerte lisible.
 
-## Démarrage rapide
+## Test en moins d’une minute
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests
@@ -13,7 +13,9 @@ PYTHONPATH=src python3 -m glacis.server
 
 Le tableau s'ouvre sur `http://localhost:8090` et le bouton de démonstration injecte cinq lectures synthétiques. Un second clic rejoue les mêmes messages sans dupliquer le journal. Une réutilisation du même `reading_id` avec un autre contenu est refusée explicitement.
 
-Le pied de page affiche aussi, quand la source est joignable, le contexte météo Open-Meteo de Paris. Cette donnée est lue directement par le navigateur, avec une solution de repli côté API. Elle reste un simple repère de démonstration : elle ne modifie ni la décision de température, ni les alertes de la chaîne du froid.
+Ouvre `http://localhost:8090`, puis clique sur **Lancer les relevés de démo**. Le premier clic injecte cinq relevés synthétiques et rend les décisions visibles. Le second vérifie l’idempotence sans dupliquer le journal.
+
+Le pied de page affiche aussi, quand la source est joignable, le contexte météo Open-Meteo de Paris avec un lien vers sa documentation. Cette donnée est lue directement par le navigateur, avec une solution de repli côté API. Elle reste un simple repère : elle ne modifie ni la décision de température, ni les alertes de la chaîne du froid. Une panne Open-Meteo ne bloque jamais le scénario local.
 
 ## Version Kafka
 

@@ -18,14 +18,15 @@ WEB = ROOT / "web"
 
 def weather_context() -> dict:
     url = "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FParis"
+    documentation_url = "https://open-meteo.com/en/docs"
     try:
         request = Request(url, headers={"User-Agent": "Ikel-Glacis/1.0 (+https://github.com/Ikel0/glacis)"})
         with urlopen(request, timeout=5) as response:
             payload = json.load(response)
         current = payload.get("current", {})
-        return {"live": True, "source": "Open-Meteo · Paris", "temperature_c": current.get("temperature_2m"), "humidity": current.get("relative_humidity_2m"), "observed_at": current.get("time")}
+        return {"live": True, "source": "Open-Meteo · Paris", "source_url": documentation_url, "decision_use": False, "temperature_c": current.get("temperature_2m"), "humidity": current.get("relative_humidity_2m"), "observed_at": current.get("time")}
     except (OSError, json.JSONDecodeError, TypeError, ValueError):
-        return {"live": False, "source": "Open-Meteo · Paris", "message": "Contexte météo indisponible."}
+        return {"live": False, "source": "Open-Meteo · Paris", "source_url": documentation_url, "decision_use": False, "message": "Contexte météo indisponible. La démo locale reste utilisable."}
 
 
 def ingest(reading: dict) -> dict:

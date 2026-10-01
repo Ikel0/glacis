@@ -54,4 +54,6 @@ class GlacisTests(unittest.TestCase):
             context = weather_context()
         self.assertTrue(context["live"])
         self.assertEqual(context["temperature_c"], 22.6)
+        self.assertFalse(context["decision_use"])
+        self.assertEqual(context["source_url"], "https://open-meteo.com/en/docs")
         self.assertEqual(mocked.call_args.args[0].get_header("User-agent"), "Ikel-Glacis/1.0 (+https://github.com/Ikel0/glacis)")
